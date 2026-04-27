@@ -6,6 +6,7 @@ using SAIN.Components.BotComponentSpace.Classes.EnemyClasses;
 using SAIN.Components.PlayerComponentSpace;
 using SAIN.Helpers;
 using SAIN.Models.Enums;
+using SAIN.Plugin;
 using SAIN.Preset.GlobalSettings;
 using SAIN.Types.PlayerSmoothing;
 using UnityEngine;
@@ -74,6 +75,18 @@ public class Enemy : BotBase, ISPlayer
         else
         {
             interval = IsAI ? 1f / 12f : 1f / 16f;
+        }
+        // Apply AI limit throttling for non-current enemies
+        if (interval > 0.1f && !IsCurrentEnemy && Bot != null)
+        {
+            var settings = SAINPlugin.LoadedPreset?.GlobalSettings?.General?.Performance;
+            if (settings != null && settings.PerformanceMode)
+            {
+                if (Bot.CurrentAILimit >= AILimitSetting.VeryFar)
+                    interval *= 3f;
+                else if (Bot.CurrentAILimit >= AILimitSetting.Far)
+                    interval *= 1.5f;
+            }
         }
         return interval * UnityEngine.Random.Range(0.75f, 1.25f);
     }
@@ -550,7 +563,7 @@ public class Enemy : BotBase, ISPlayer
         }
         // Checks specific to bots
         BotOwner enemyBotOwner = enemyPlayerComp.BotOwner;
-        if (enemyPlayerComp.IsAI && enemyBotOwner == null)
+        if (enemyPlayerComp.IsAI)
         {
             if (enemyBotOwner == null)
             {
@@ -604,8 +617,8 @@ public class Enemy : BotBase, ISPlayer
             EnemyInfo.Direction = EnemyDirection;
             EnemyInfo.Distance = RealDistance;
         }
-        catch
-        { // EFT code loves throwing random errors
+        catch (NullReferenceException)
+        { // EFT code may throw when objects are disposed
         }
     }
 

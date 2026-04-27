@@ -169,20 +169,13 @@ public class HearingInputClass : BotSubClass<SAINHearingSensorClass>, IBotClass
             ProcessSounds(AISoundCachedEvents, AlreadyDeafened, DeafenCoef_Generic, SoundDataToReactTo);
         }
 
-        bool SoundRemoved = false;
         for (int i = SoundDataToReactTo.Count - 1; i >= 0; i--)
         {
             if (SoundDataToReactTo[i].CanReport(0.2f))
             {
                 TryReactToSound(SoundDataToReactTo[i]);
                 SoundDataToReactTo.RemoveAt(i);
-                SoundRemoved = true;
             }
-        }
-
-        if (SoundRemoved)
-        {
-            SoundDataToReactTo.TrimExcess();
         }
 
         if (DeafeningShot)

@@ -167,6 +167,18 @@ public class SAINEnemyController : BotComponentClassBase
 #endif
             return;
         }
+
+        // Build a HashSet for O(1) ally lookups instead of O(n) per enemy
+        if (_alliesHash.Count != Allies.Count)
+        {
+            _alliesHash.Clear();
+            foreach (var ally in Allies)
+            {
+                if (ally != null)
+                    _alliesHash.Add(ally.ProfileId);
+            }
+        }
+
         bool searching = bot.Decision.CurrentCombatDecision == ECombatDecision.Search;
         float forgetEnemyTime = bot.Info.ForgetEnemyTime;
         foreach (Enemy Enemy in EnemiesArray)
@@ -176,7 +188,7 @@ public class SAINEnemyController : BotComponentClassBase
                 _invalidIdsToRemove.Add(Enemy.EnemyProfileId);
                 continue;
             }
-            if (Allies.Contains(Enemy.EnemyPlayer))
+            if (_alliesHash.Contains(Enemy.EnemyProfileId))
             {
 #if DEBUG
                 if (SAINPlugin.DebugMode)
@@ -484,9 +496,9 @@ public class SAINEnemyController : BotComponentClassBase
             {
                 BotOwner.Memory.GoalEnemy = enemyInfo;
             }
-            catch
+            catch (NullReferenceException)
             {
-                // Sometimes bsg code throws an error here :D
+                // EFT code may throw when objects are disposed
             }
         }
     }
@@ -530,6 +542,7 @@ public class SAINEnemyController : BotComponentClassBase
 
     private readonly List<string> _allyIdsToRemove = [];
     private readonly List<string> _invalidIdsToRemove = [];
+    private readonly HashSet<string> _alliesHash = [];
 
     private readonly EnemyListController _listController;
 }

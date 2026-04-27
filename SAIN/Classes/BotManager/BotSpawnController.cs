@@ -223,16 +223,16 @@ public class BotSpawnController : BotManagerBase
                     BotGroup1.Remove(botComponent);
                     BotGroup2.Remove(botComponent);
                     botComponent.Dispose();
+                    BotDictionary.Remove(botOwner.ProfileId);
                 }
-                BotDictionary.Remove(botOwner.ProfileId);
-                if (botOwner.TryGetComponent(out BotComponent component) && botComponent != null)
+                else if (botOwner.TryGetComponent(out BotComponent component))
                 {
-                    OnBotRemoved?.Invoke(botComponent);
-                    SAINBots.Remove(botComponent);
-                    BotGroup1.Remove(botComponent);
-                    BotGroup2.Remove(botComponent);
-
+                    OnBotRemoved?.Invoke(component);
+                    SAINBots.Remove(component);
+                    BotGroup1.Remove(component);
+                    BotGroup2.Remove(component);
                     component.Dispose();
+                    BotDictionary.Remove(botOwner.ProfileId);
                 }
             }
             else

@@ -26,12 +26,16 @@ internal static class Logger
 
     public static void LogWarning(object data)
     {
+#if DEBUG
         Log(LogLevel.Warning, data);
+#endif
     }
 
     public static void LogError(object data)
     {
+#if DEBUG
         Log(LogLevel.Error, data);
+#endif
     }
 
     public static void NotifyInfo(object data, ENotificationDurationType duration = ENotificationDurationType.Default)

@@ -3,6 +3,8 @@ using EFT;
 using SAIN.Components;
 using SAIN.Helpers.Events;
 using SAIN.Models.Enums;
+using SAIN.Plugin;
+using SAIN.Preset.GlobalSettings;
 using SAIN.SAINComponent.Classes.EnemyClasses;
 using SAIN.SAINComponent.SubComponents.CoverFinder;
 using UnityEngine;
@@ -45,9 +47,24 @@ public class BotDecisionManager(SAINDecisionClass decisionClass) : BotSubClass<S
     {
         if (_nextGetDecisionTime < Time.time)
         {
-            _nextGetDecisionTime = Time.time + DECISION_FREQUENCY;
+            _nextGetDecisionTime = Time.time + GetDecisionFrequency();
             getDecision();
         }
+    }
+
+    private float GetDecisionFrequency()
+    {
+        var settings = SAINPlugin.LoadedPreset?.GlobalSettings?.General?.Performance;
+        if (settings == null || !settings.PerformanceMode)
+            return DECISION_FREQUENCY;
+
+        float baseInterval = DECISION_FREQUENCY;
+        if (Bot.CurrentAILimit >= AILimitSetting.VeryFar)
+            return baseInterval * 3f;
+        if (Bot.CurrentAILimit >= AILimitSetting.Far)
+            return baseInterval * 1.5f;
+
+        return baseInterval;
     }
 
     public override void Dispose()

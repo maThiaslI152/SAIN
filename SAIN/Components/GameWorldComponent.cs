@@ -8,6 +8,8 @@ using EFT.InventoryLogic;
 using SAIN.Components.CoverFinder;
 using SAIN.Components.PlayerComponentSpace;
 using SAIN.Helpers;
+using SAIN.Plugin;
+using SAIN.Preset.GlobalSettings;
 using UnityEngine;
 
 namespace SAIN.Components;
@@ -165,9 +167,11 @@ public class GameWorldComponent : MonoBehaviour
             }
         }
 
+        // Scale bot sound cache interval by bot count for performance
+        float botCacheInterval = GetBotCacheInterval();
         if (_Sounds_BotCache_Time < CurrentTime)
         {
-            _Sounds_BotCache_Time = CurrentTime + _Sounds_BotCache_Interval;
+            _Sounds_BotCache_Time = CurrentTime + botCacheInterval;
 
             foreach (var playerComponent in PlayerComponents)
             {
@@ -178,6 +182,22 @@ public class GameWorldComponent : MonoBehaviour
                 }
             }
         }
+    }
+
+    private float GetBotCacheInterval()
+    {
+        var settings = SAINPlugin.LoadedPreset?.GlobalSettings?.General?.Performance;
+        if (settings == null || !settings.PerformanceMode)
+            return _Sounds_BotCache_Interval;
+
+        // Scale interval based on total bot count - more bots = less frequent processing
+        var bots = SAINBotController?.BotSpawnController?.SAINBots;
+        if (bots != null && bots.Count > 30)
+            return _Sounds_BotCache_Interval * 2f;
+        if (bots != null && bots.Count > 15)
+            return _Sounds_BotCache_Interval * 1.5f;
+
+        return _Sounds_BotCache_Interval;
     }
 
     protected static void UpdatePlayerSoundCache(PlayerComponent Player)

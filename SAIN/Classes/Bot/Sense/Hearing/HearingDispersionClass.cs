@@ -101,8 +101,9 @@ public class HearingDispersionClass(SAINHearingSensorClass hearing) : BotSubClas
 #endif
                 continue; // No valid point found
             }
-            path = new NavMeshPath();
-            if (!NavMesh.CalculatePath(origin, hit.position, -1, path))
+            path = _randomPathBox ??= new NavMeshPath();
+            _randomPathBox.ClearCorners();
+            if (!NavMesh.CalculatePath(origin, hit.position, -1, _randomPathBox))
             {
 #if DEBUG
                 Logger.LogDebug($"Failed nav path");
@@ -172,6 +173,7 @@ public class HearingDispersionClass(SAINHearingSensorClass hearing) : BotSubClas
     }
 
     private static NavMeshPath _randomPath;
+    private static NavMeshPath _randomPathBox;
 
     public static Vector3 RandomPointInBox(Vector3 center, Vector3 size)
     {

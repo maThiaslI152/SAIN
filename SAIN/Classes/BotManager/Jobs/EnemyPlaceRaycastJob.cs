@@ -73,12 +73,13 @@ public class EnemyPlaceRaycastJob : BotManagerBase
     private JobHandle EnemyPlaceJobHandle;
     private CalcEnemyPlaceJob EnemyPlaceJob;
     private readonly List<EnemyPlace> PlacesToCheck = new();
+    private bool _disposed;
 
     private IEnumerator EnemyPlaceJobLoop()
     {
         yield return null;
 
-        while (true)
+        while (!_disposed)
         {
             if (BotController == null)
             {
@@ -138,79 +139,106 @@ public class EnemyPlaceRaycastJob : BotManagerBase
                 continue;
             }
 
-            NativeArray<Vector3> PlacePositions = new(Count, Allocator.TempJob);
-            NativeArray<Vector3> BotPositions = new(Count, Allocator.TempJob);
-            NativeArray<Vector3> EnemyPositions = new(Count, Allocator.TempJob);
-            for (int i = 0; i < Count; i++)
+            NativeArray<Vector3> PlacePositions = default;
+            NativeArray<Vector3> BotPositions = default;
+            NativeArray<Vector3> EnemyPositions = default;
+            NativeArray<float> PlaceDistancesToBot = default;
+            NativeArray<float> PlaceDistancesToEnemy = default;
+
+            try
             {
-                EnemyPlace Place = PlacesToCheck[i];
-                PlacePositions[i] = Place.Position;
-                BotPositions[i] = Place.PlaceData.Owner.Transform.EyePosition;
-                EnemyPositions[i] = Place.PlaceData.OwnerEnemy.EnemyTransform.Position;
-            }
+                PlacePositions = new NativeArray<Vector3>(Count, Allocator.TempJob);
+                BotPositions = new NativeArray<Vector3>(Count, Allocator.TempJob);
+                EnemyPositions = new NativeArray<Vector3>(Count, Allocator.TempJob);
 
-            EnemyPlaceJob = new CalcEnemyPlaceJob
-            {
-                PlacePositions = PlacePositions,
-                BotPositions = BotPositions,
-                EnemyPositions = EnemyPositions,
-                PlaceDistancesToBot = new NativeArray<float>(Count, Allocator.TempJob),
-                PlaceDistancesToEnemy = new NativeArray<float>(Count, Allocator.TempJob),
-            };
-
-            EnemyPlaceJobHandle = EnemyPlaceJob.Schedule(Count, new JobHandle());
-
-            _commands = new NativeArray<RaycastCommand>(Count, Allocator.TempJob);
-            _hits = new NativeArray<RaycastHit>(Count, Allocator.TempJob);
-
-            for (int i = 0; i < Count; i++)
-            {
-                EnemyPlace Place = PlacesToCheck[i];
-                Vector3 HeadPosition = Place.PlaceData.Owner.Transform.EyePosition;
-                Vector3 PlacePosition = Place.Position + Vector3.up;
-                _commands[i] = new RaycastCommand(HeadPosition, PlacePosition - HeadPosition, new QueryParameters { layerMask = Mask }, 1f);
-            }
-
-            RaycastJobHandle = RaycastCommand.ScheduleBatch(_commands, _hits, 32);
-
-            yield return null;
-
-            var handle = RaycastJobHandle;
-            if (!handle.IsCompleted)
-            {
-                handle.Complete();
-            }
-
-            RaycastJobHandle = handle;
-
-            handle = EnemyPlaceJobHandle;
-            if (!handle.IsCompleted)
-            {
-                handle.Complete();
-            }
-
-            EnemyPlaceJobHandle = handle;
-
-            for (int i = 0; i < Count; i++)
-            {
-                EnemyPlace Place = PlacesToCheck[i];
-                if (Place != null)
+                for (int i = 0; i < Count; i++)
                 {
-                    RaycastHit Hit = _hits[i];
-                    Place.SetDistances(EnemyPlaceJob.PlaceDistancesToBot[i], EnemyPlaceJob.PlaceDistancesToEnemy[i], Place.PlaceData.Owner);
-                    Place.SetVisibilityOfPlace(Hit.collider == null, Place.PlaceData.Owner);
+                    EnemyPlace Place = PlacesToCheck[i];
+                    PlacePositions[i] = Place.Position;
+                    BotPositions[i] = Place.PlaceData.Owner.Transform.EyePosition;
+                    EnemyPositions[i] = Place.PlaceData.OwnerEnemy.EnemyTransform.Position;
+                }
+
+                EnemyPlaceJob = new CalcEnemyPlaceJob
+                {
+                    PlacePositions = PlacePositions,
+                    BotPositions = BotPositions,
+                    EnemyPositions = EnemyPositions,
+                    PlaceDistancesToBot = new NativeArray<float>(Count, Allocator.TempJob),
+                    PlaceDistancesToEnemy = new NativeArray<float>(Count, Allocator.TempJob),
+                };
+
+                EnemyPlaceJobHandle = EnemyPlaceJob.Schedule(Count, new JobHandle());
+
+                _commands = new NativeArray<RaycastCommand>(Count, Allocator.TempJob);
+                _hits = new NativeArray<RaycastHit>(Count, Allocator.TempJob);
+
+                for (int i = 0; i < Count; i++)
+                {
+                    EnemyPlace Place = PlacesToCheck[i];
+                    Vector3 HeadPosition = Place.PlaceData.Owner.Transform.EyePosition;
+                    Vector3 PlacePosition = Place.Position + Vector3.up;
+                    Vector3 dir = PlacePosition - HeadPosition;
+                    _commands[i] = new RaycastCommand(HeadPosition, dir.normalized, new QueryParameters { layerMask = Mask }, dir.magnitude);
+                }
+
+                RaycastJobHandle = RaycastCommand.ScheduleBatch(_commands, _hits, 32);
+
+                yield return null;
+
+                var handle = RaycastJobHandle;
+                if (!handle.IsCompleted)
+                {
+                    handle.Complete();
+                }
+
+                RaycastJobHandle = handle;
+
+                handle = EnemyPlaceJobHandle;
+                if (!handle.IsCompleted)
+                {
+                    handle.Complete();
+                }
+
+                EnemyPlaceJobHandle = handle;
+
+                for (int i = 0; i < Count; i++)
+                {
+                    EnemyPlace Place = PlacesToCheck[i];
+                    if (Place != null)
+                    {
+                        RaycastHit Hit = _hits[i];
+                        Place.SetDistances(EnemyPlaceJob.PlaceDistancesToBot[i], EnemyPlaceJob.PlaceDistancesToEnemy[i], Place.PlaceData.Owner);
+                        Place.SetVisibilityOfPlace(Hit.collider == null, Place.PlaceData.Owner);
+                    }
                 }
             }
-
-            PlacesToCheck.Clear();
-            EnemyPlaceJob.Dispose();
-            _commands.Dispose();
-            _hits.Dispose();
+            finally
+            {
+                PlacesToCheck.Clear();
+                EnemyPlaceJob.Dispose();
+                if (_commands.IsCreated)
+                {
+                    _commands.Dispose();
+                }
+                if (_hits.IsCreated)
+                {
+                    _hits.Dispose();
+                }
+                // The NativeArrays allocated in the try block are owned by EnemyPlaceJob (via struct field refs)
+                // so disposing EnemyPlaceJob above covers PlacePositions/BotPositions/EnemyPositions/PlaceDistancesToBot/PlaceDistancesToEnemy
+            }
         }
     }
 
     public void Dispose()
     {
+        if (_disposed)
+        {
+            return;
+        }
+        _disposed = true;
+
         if (!RaycastJobHandle.IsCompleted)
         {
             RaycastJobHandle.Complete();

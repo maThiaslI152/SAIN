@@ -239,6 +239,11 @@ public class CoverAnalyzer(BotComponent bot, CoverFinderComponent coverFinder) :
 
     private static bool checkIfPlayerCollidersNear(Vector3 point, string botProfileId, float radius)
     {
+        if (_playerColliderArray == null)
+        {
+            _playerColliderArray = new Collider[5];
+        }
+
         for (int i = 0; i < _playerColliderArray.Length; i++)
         {
             _playerColliderArray[i] = null;
@@ -279,7 +284,8 @@ public class CoverAnalyzer(BotComponent bot, CoverFinderComponent coverFinder) :
         return true;
     }
 
-    private static Collider[] _playerColliderArray = new Collider[5];
+    [ThreadStatic]
+    private static Collider[] _playerColliderArray;
 
     private static bool isDistanceTooClose(CoverPoint point, Vector3 position)
     {

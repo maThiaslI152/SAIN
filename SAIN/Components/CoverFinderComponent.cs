@@ -109,9 +109,10 @@ public class CoverFinderComponent : BotComponentBase
 
     private IEnumerator FindCoverLoop()
     {
-        WaitForSeconds wait = new(FIND_COVER_INTERVAL);
         while (Bot != null)
         {
+            float interval = GetCoverInterval();
+            WaitForSeconds wait = new(interval);
             Enemy enemy = Bot.EnemyController.GoalEnemy;
             if (enemy != null)
             {
@@ -259,6 +260,25 @@ public class CoverFinderComponent : BotComponentBase
     {
         StopLooking();
         StopAllCoroutines();
+    }
+
+    private float GetCoverInterval()
+    {
+        var settings = SAINPlugin.LoadedPreset?.GlobalSettings?.General?.Performance;
+        if (settings == null || !settings.PerformanceMode)
+            return FIND_COVER_INTERVAL;
+
+        float baseInterval = 1f / settings.CoverFindFrequency;
+
+        if (Bot == null)
+            return baseInterval;
+
+        if (Bot.CurrentAILimit >= AILimitSetting.VeryFar)
+            return baseInterval * 4f;
+        if (Bot.CurrentAILimit >= AILimitSetting.Far)
+            return baseInterval * 2f;
+
+        return baseInterval;
     }
 
     private void botDisposed()
