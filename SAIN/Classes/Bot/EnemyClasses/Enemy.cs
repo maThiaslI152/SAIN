@@ -36,17 +36,7 @@ public class Enemy : BotBase, ISPlayer
 
     public bool ShallCheckLoS(float currentTime)
     {
-        if (_nextCheckLoSTime < currentTime)
-        {
-            if (!CheckValid())
-            {
-                return false;
-            }
-
-            _nextCheckLoSTime = currentTime + LookUpdateInterval();
-            return true;
-        }
-        return false;
+        return ShallCheckLook(currentTime, out _);
     }
 
     private float LookUpdateInterval()
@@ -92,7 +82,6 @@ public class Enemy : BotBase, ISPlayer
     }
 
     private float _nextCheckLookTime = 0f;
-    private float _nextCheckLoSTime = 0f;
 
     public Vector3 NavMeshPosition
     {

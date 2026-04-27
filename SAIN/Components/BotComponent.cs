@@ -223,7 +223,11 @@ public class BotComponent : BotComponentBase, ISPlayer
     {
         for (int i = 0; i < List.Count; i++)
         {
-            List[i]?.ManualUpdate();
+            var botClass = List[i];
+            if (botClass?.ShallTick(CurrentTime) == true)
+            {
+                botClass.ManualUpdate();
+            }
         }
     }
 

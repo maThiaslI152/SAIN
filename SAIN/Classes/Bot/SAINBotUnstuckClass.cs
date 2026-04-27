@@ -169,6 +169,7 @@ public class SAINBotUnstuckClass : BotComponentClassBase
 
     private IEnumerator BotUnstuck()
     {
+        WaitForSeconds wait = new(0.25f);
         while (true)
         {
             //if (Bot.BotActive
@@ -177,7 +178,7 @@ public class SAINBotUnstuckClass : BotComponentClassBase
             //    tryAutoVault();
             //    checkResetPathFromVault();
             //}
-            yield return null;
+            yield return wait;
         }
     }
 

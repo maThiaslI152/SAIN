@@ -1,5 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using SAIN.Plugin;
+using SAIN.Preset.GlobalSettings;
 using SAIN.SAINComponent.Classes.EnemyClasses;
 using Unity.Collections;
 using Unity.Jobs;
@@ -74,6 +76,20 @@ public class EnemyPlaceRaycastJob : BotManagerBase
     private CalcEnemyPlaceJob EnemyPlaceJob;
     private readonly List<EnemyPlace> PlacesToCheck = new();
     private bool _disposed;
+    private WaitForSeconds _enemyPlaceWait;
+    private float _lastEnemyPlaceInterval;
+
+    private WaitForSeconds GetEnemyPlaceWait()
+    {
+        var settings = SAINPlugin.LoadedPreset?.GlobalSettings?.General?.Performance;
+        float interval = settings != null && settings.PerformanceMode ? 0.1f : 0.033f;
+        if (_enemyPlaceWait == null || Mathf.Abs(_lastEnemyPlaceInterval - interval) > 0.001f)
+        {
+            _lastEnemyPlaceInterval = interval;
+            _enemyPlaceWait = new WaitForSeconds(interval);
+        }
+        return _enemyPlaceWait;
+    }
 
     private IEnumerator EnemyPlaceJobLoop()
     {
@@ -228,6 +244,7 @@ public class EnemyPlaceRaycastJob : BotManagerBase
                 // The NativeArrays allocated in the try block are owned by EnemyPlaceJob (via struct field refs)
                 // so disposing EnemyPlaceJob above covers PlacePositions/BotPositions/EnemyPositions/PlaceDistancesToBot/PlaceDistancesToEnemy
             }
+            yield return GetEnemyPlaceWait();
         }
     }
 

@@ -300,7 +300,7 @@ public class VisionRaycastJob : BotManagerBase
             {
                 foreach (Enemy enemy in bot.EnemyController.EnemiesArray)
                 {
-                    if (enemy.ShallCheckLoS(currentTime))
+                    if (enemy.ShallCheckLook(currentTime, out _))
                     {
                         enemies.Add(enemy);
                     }

@@ -2,6 +2,8 @@
 using EFT;
 using SAIN.BotController.Classes;
 using SAIN.Components;
+using Unity.Collections;
+using Unity.Jobs;
 using UnityEngine;
 
 namespace SAIN.SAINComponent.Classes.Info;
@@ -113,16 +115,57 @@ public class BotSquadContainer : BotComponentClassBase
     {
         VisibleMembers.Clear();
         Vector3 eyePos = Bot.Transform.EyePosition;
+
+        // Collect candidates within range
+        List<BotComponent> candidates = new();
         foreach (var member in Members.Values)
         {
             if (member != null && member.GetDistanceToPlayer(Bot.ProfileId) <= CHECK_VISIBLE_MEMBERS_DISTANCE)
             {
-                Vector3 direction = member.Transform.BodyPosition - eyePos;
-                if (!Physics.Raycast(eyePos, direction.normalized, direction.magnitude, LayerMaskClass.HighPolyWithTerrainMask))
+                candidates.Add(member);
+            }
+        }
+
+        if (candidates.Count == 0)
+            return;
+
+        // Batch raycasts via Unity Job System
+        int count = candidates.Count;
+        NativeArray<RaycastCommand> commands = new(count, Allocator.TempJob);
+        NativeArray<RaycastHit> hits = new(count, Allocator.TempJob);
+
+        try
+        {
+            for (int i = 0; i < count; i++)
+            {
+                Vector3 direction = candidates[i].Transform.BodyPosition - eyePos;
+                float distance = direction.magnitude;
+                Vector3 directionNormal = distance > 0f ? direction / distance : Vector3.forward;
+                commands[i] = new RaycastCommand(
+                    eyePos,
+                    directionNormal,
+                    new QueryParameters { layerMask = LayerMaskClass.HighPolyWithTerrainMask },
+                    Mathf.Max(distance, 0.01f)
+                );
+            }
+
+            var handle = RaycastCommand.ScheduleBatch(commands, hits, 32);
+            handle.Complete();
+
+            for (int i = 0; i < count; i++)
+            {
+                if (hits[i].collider == null)
                 {
-                    VisibleMembers.Add(member);
+                    VisibleMembers.Add(candidates[i]);
                 }
             }
+        }
+        finally
+        {
+            if (commands.IsCreated)
+                commands.Dispose();
+            if (hits.IsCreated)
+                hits.Dispose();
         }
     }
 }

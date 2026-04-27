@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using SAIN.Components.PlayerComponentSpace;
 using SAIN.Extensions;
 using SAIN.Models.PlayerData;
+using SAIN.Plugin;
+using SAIN.Preset.GlobalSettings;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
@@ -93,6 +95,18 @@ public class DirectionDataJob : BotManagerBase
     private JobHandle _PlayerTickJobHandle;
     private PlayerTickJob _PlayerTickJob;
     private readonly List<PlayerTickData> _playerTickData = [];
+    private WaitForSeconds _directionDataWait;
+
+    private static WaitForSeconds GetDirectionDataWait()
+    {
+        var settings = SAINPlugin.LoadedPreset?.GlobalSettings?.General?.Performance;
+        float interval = 1f / 30f;
+        if (settings != null && settings.PerformanceMode)
+        {
+            interval = 1f / 15f;
+        }
+        return new WaitForSeconds(interval);
+    }
 
     public DirectionDataJob(BotManagerComponent botController)
         : base(botController)
@@ -103,12 +117,13 @@ public class DirectionDataJob : BotManagerBase
     private IEnumerator DirectionDataJobLoop()
     {
         yield return null;
+        _directionDataWait = GetDirectionDataWait();
         while (GameWorldComponent.Instance != null)
         {
             var players = GameWorldComponent.Instance.PlayerTracker?.AlivePlayerArray;
             if (players == null || players.Count <= 1)
             {
-                yield return null;
+                yield return _directionDataWait;
                 continue;
             }
 
@@ -155,7 +170,7 @@ public class DirectionDataJob : BotManagerBase
                 _PlayerTickJob.Dispose();
                 _playerTickData.Clear();
             }
-            yield return null;
+            yield return _directionDataWait;
         }
     }
 

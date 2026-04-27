@@ -2,6 +2,8 @@
 using EFT;
 using SAIN.Components;
 using SAIN.Helpers;
+using SAIN.Plugin;
+using SAIN.Preset.GlobalSettings;
 
 namespace SAIN.SAINComponent.Classes.EnemyClasses;
 
@@ -159,6 +161,12 @@ public class SAINEnemyController : BotComponentClassBase
 
     public void UpdateEnemies(BotComponent bot, float currentTime)
     {
+        // Throttle full enemy iteration: 20Hz base, 10Hz in PerformanceMode
+        if (_nextEnemyUpdateTime > currentTime)
+            return;
+        var perfSettings = SAINPlugin.LoadedPreset?.GlobalSettings?.General?.Performance;
+        _nextEnemyUpdateTime = currentTime + ((perfSettings != null && perfSettings.PerformanceMode) ? 0.1f : 0.05f);
+
         List<IPlayer> Allies = bot.BotOwner?.BotsGroup?.Allies;
         if (Allies == null)
         {
@@ -543,6 +551,7 @@ public class SAINEnemyController : BotComponentClassBase
     private readonly List<string> _allyIdsToRemove = [];
     private readonly List<string> _invalidIdsToRemove = [];
     private readonly HashSet<string> _alliesHash = [];
+    private float _nextEnemyUpdateTime;
 
     private readonly EnemyListController _listController;
 }
